@@ -9,7 +9,10 @@ import copy
 import pickle
 from logger import logger
 from logger import create_stats_ordered_dict
-device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+
+# device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+# FORCE CPU
+device = torch.device("cpu")
 
 
 class Actor(nn.Module):
@@ -96,6 +99,10 @@ class Critic(nn.Module):
 # Vanilla Variational Auto-Encoder
 class VAE(nn.Module):
     def __init__(self, state_dim, action_dim, latent_dim, max_action, hidden_size=750):
+        
+        # TEMP - force to CPU
+        self.device = torch.device("cpu")        
+        
         super(VAE, self).__init__()
         self.e1 = nn.Linear(state_dim + action_dim, hidden_size)
         self.e2 = nn.Linear(hidden_size, hidden_size)
@@ -127,7 +134,7 @@ class VAE(nn.Module):
     def decode(self, state, z=None, clip=None, raw=False):
         # When sampling from the VAE, the latent vector is clipped to [-0.5, 0.5]
         if z is None:
-            z = torch.randn((state.shape[0], self.latent_dim)).to(device)
+            z = torch.randn((state.shape[0], self.latent_dim)).to(self.device)
             if clip is not None:
                 z = z.clamp(-clip, clip)
 
@@ -140,7 +147,11 @@ class VAE(nn.Module):
 
 class VAEModule(object):
     def __init__(self, *args, vae_lr=1e-4, **kwargs):
-        self.vae = VAE(*args, **kwargs).to(device)
+        
+        # TEMP - force to CPU
+        self.device = torch.device("cpu")
+        
+        self.vae = VAE(*args, **kwargs).to(self.device)
         self.vae_optimizer = torch.optim.Adam(self.vae.parameters(), lr=vae_lr)
 
     def train(self, dataset, folder_name, batch_size=100, iterations=500000):
@@ -158,8 +169,8 @@ class VAEModule(object):
         return logs
 
     def loss(self, state, action):
-        state = torch.FloatTensor(state).to(device)
-        action = torch.FloatTensor(action).to(device)
+        state = torch.FloatTensor(state).to(self.device)
+        action = torch.FloatTensor(action).to(self.device)
         recon, mean, std = self.vae(state, action)
         recon_loss = F.mse_loss(recon, action)
         KL_loss = -0.5 * (1 + torch.log(std.pow(2)) - mean.pow(2) - std.pow(2)).mean()
@@ -187,6 +198,7 @@ class VAEModule(object):
 class Latent(object):
     def __init__(self, vae, state_dim, action_dim, latent_dim, max_action, discount=0.99, tau=0.005,
                  actor_lr=1e-3, critic_lr=1e-3, lmbda=0.75, max_latent_action=2, **kwargs):
+        
         self.actor = Actor(state_dim, latent_dim, max_latent_action).to(device)
         self.actor_target = copy.deepcopy(self.actor)
         self.actor_optimizer = torch.optim.Adam(self.actor.parameters(), lr=actor_lr)

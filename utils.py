@@ -3,7 +3,11 @@ Based on https://github.com/sfujim/BCQ
 """
 import numpy as np
 import torch
-device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+# device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+
+# FORCE CPU
+device = torch.device("cpu")
+
 
 
 class ReplayBuffer(object):

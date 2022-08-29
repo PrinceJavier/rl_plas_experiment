@@ -1,7 +1,9 @@
 import numpy as np
 import torch
-device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+# device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
+# FORCE CPU
+device = torch.device("cpu")
 
 def reward_to_return(reward_arr, discount=0.99):
     assert type(reward_arr) == np.ndarray
